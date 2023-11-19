@@ -1,0 +1,70 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// tabela
+model User {
+  id           String @id @default(uuid())  // "id" = cada usuaria vai ter um id // "@id" esse vai ser campo prime, a chave primaria // @default(uuid()) ele vai ser criado com um id unico gerado
+  // campos que o usuario vai ter 
+  username     String @unique  // "@uniqu" pra ele ser unico, pra nao ter usernames duplicados 
+  name         String
+  email        String?   @unique
+  avatar_url   String?
+  created_at   DateTime @default(now()) // valor atual do registro na hora que ele vai ser inserido no banco de dados
+
+  accounts      Account[]
+  sessions      Session[]
+
+  @@map("user") // pra trocar o nome 
+}
+
+
+// pra salvar o usuario no banco de dados, aqui sao todas as tabelas que vamos precisar para armazenar as informações de autenticação com o adpters
+// adapters é um intermedio, um ponto de conecsão entre o backend da nossa aplicação e o banco de dados do prisma por exemplo, o adapters prover varios metodos pra manipular dados, criar dados pra que nossa aplicação possa chamr esses metodos
+// vamos precisar mudar um pouco, pq se na aplicação nao estivesse o processo de criar o usuario antes de fazer o login nao precisaria mudar nada no adapters da biblioteca, só usario o adapters do prisma e o resto ia fazer sozinho, vou criar o meu proprio adapters
+// aproveitando que vamos criar o nosso proprio adapters podemos escolher quais campo eu quero salvar no banco de dados, mudar o nome, diferende se estivesse usando o adapters padrão do prisma eu nao conseguiria fazer tudo isso pq ele tem a sua propria definição
+model Account {
+  id                   String  @id @default(cuid())
+  user_id              String
+  type                 String
+  provider             String
+  provider_account_id  String
+  refresh_token        String?  
+  access_token         String?  
+  expires_at           Int?
+  token_type           String?
+  scope                String?
+  id_token             String?  
+  session_state        String?
+
+  user User @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@unique([provider, provider_account_id])
+
+  @@map("account")
+}
+
+model Session {
+  id             String   @id @default(cuid())
+  session_token  String   @unique
+  user_id        String
+  expires        DateTime
+  user        User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+
+// esplicação dos modal
+// 
+// user é o usuario, cada vez que tiver um usuario novo na nossa aplicação registrado ou nao vai existir um registro na tabela 
+// account é a integração de um usuario com algum provider, ex o mesmo usuario logou tanto com google tando com github na nossa aplicação, eu vou ter um account pro google e um pro github qua vai ser indentificado pelo provider, um registro pra cada um na tabela do mesmo usuario
+// session cada vez que um usuario fizer login em maquina diferente eu vou ter uma session pra cada um"""
